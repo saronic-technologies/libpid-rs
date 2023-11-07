@@ -1,3 +1,5 @@
+use log::debug;
+
 pub struct PID {
     // PID Gains
     kp: f64,
@@ -94,16 +96,22 @@ impl PID {
         }
         self.timer = Some(std::time::Instant::now());
         self.err_prev = err;
-        // TODO: LOG TO FILE
-        eprintln!("SP: {}", self.sp);
-        eprintln!("PV: {}", self.pv);
-        eprintln!("error: {err}");
-        eprintln!("err_sum: {}", self.err_sum);
-        eprintln!("err_dt: {err_dt}");
+
         // Calculate output
         let output = (err * self.kp) + (self.err_sum * self.ki) + (err_dt * self.kd);
         // Clamp output within desired range
-        self.clamp_output(output)
+        self.clamp_output(output);
+
+        debug!("SP: {}, PV: {}, ERR: {}, ERR_SUM: {}, ERR_DT: {}, OUT: {}",
+            self.sp,
+            self.pv,
+            err,
+            self.err_sum,
+            err_dt,
+            output
+        );
+
+        output
     }
 
     fn clamp_output(&self, val: f64) -> f64 {
@@ -115,17 +123,11 @@ impl PID {
         let min_input: f64 = -err_bound;
         let max_input: f64 = err_bound;
         let mut input: f64 = error;
-        eprintln!("{input}");
         let modulus: f64 = max_input - min_input;
-        eprintln!("{modulus}");
         let num_max: u32 = ((input - min_input) / modulus) as u32;
-        eprintln!("{num_max}");
         input = input - (num_max as f64 * modulus);
-        eprintln!("{input}");
         let num_min: u32 = ((input - max_input) / modulus) as u32;
-        eprintln!("{num_min}");
         input = input - (num_min as f64 * modulus);
-        eprintln!("{input}");
 
         input
     }
@@ -133,8 +135,8 @@ impl PID {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use proptest::prelude::*;
+    use super::*;
 
     #[test]
     fn test_norm_error_accuracy() {
@@ -144,7 +146,6 @@ mod tests {
         let fp_error = 0.001;
         for (t, a) in tests {
             let nt = pid.normalize_error(t);
-            eprintln!("{nt}");
             assert!((a - fp_error) <= nt);
             assert!((a + fp_error) >= nt);
         }
