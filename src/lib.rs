@@ -1,0 +1,167 @@
+pub struct PID {
+    // PID Gains
+    kp: f64,
+    ki: f64,
+    kd: f64,
+    // Setpoint
+    sp: f64,
+    // Process Variable
+    pv: f64,
+    // Continuous input range
+    continuous_input: bool,
+    input_min: f64,
+    input_max: f64,
+    // Integral Error
+    err_sum: f64,
+    // Previous Error
+    err_prev: f64,
+    // Output clamp
+    min: f64,
+    max: f64,
+    // timer for elapsed time between control loop steps
+    timer: Option<std::time::Instant>,
+}
+
+impl PID {
+    pub fn new(kp: f64, ki: f64, kd: f64) -> PID {
+        PID {
+            kp,
+            ki,
+            kd,
+            sp: 0.0,
+            pv: 0.0,
+            err_sum: 0.0,
+            err_prev: 0.0,
+            min: f64::MIN,
+            max: f64::MAX,
+            continuous_input: false,
+            input_min: 0.0,
+            input_max: 0.0,
+            timer: None,
+        }
+    }
+
+    pub fn enable_continuous_input(&mut self, min: f64, max: f64) {
+        self.continuous_input = true;
+        self.input_min = min;
+        self.input_max = max;
+    }
+
+    pub fn disable_continuous_input(&mut self) {
+        self.continuous_input = false;
+    }
+
+    pub fn reset(&mut self) {
+        self.sp = 0.0;
+        self.pv = 0.0;
+        self.err_sum = 0.0;
+        self.err_prev = 0.0;
+    }
+
+    pub fn set_gains(&mut self, kp: f64, ki: f64, kd: f64) {
+        self.kp = kp;
+        self.ki = ki;
+        self.kd = kd;
+    }
+
+    pub fn set_output_range(&mut self, min: f64, max: f64) {
+        self.min = min;
+        self.max = max;
+    }
+
+    pub fn set_sp(&mut self, sp: f64) {
+        self.sp = sp;
+    }
+
+    pub fn set_pv(&mut self, pv: f64) {
+        self.pv = pv;
+    }
+
+    pub fn step(&mut self) -> f64 {
+        // Calculate Error; normalize if input is continuous
+        let mut err = self.sp - self.pv;
+        if self.continuous_input {
+            err = self.normalize_error(err);
+        }
+        // Error summation for integral portion
+        self.err_sum = self.err_sum + err;
+        // Error rate of change for derivative portion
+        let mut err_dt: f64 = 0.0;
+        // Ignore D value on first step (timer will be None)
+        if let Some(timer) = self.timer {
+            let dt = timer.elapsed().as_secs_f64();
+            err_dt = (err - self.err_prev) / dt;
+        }
+        self.timer = Some(std::time::Instant::now());
+        self.err_prev = err;
+        // TODO: LOG TO FILE
+        eprintln!("SP: {}", self.sp);
+        eprintln!("PV: {}", self.pv);
+        eprintln!("error: {err}");
+        eprintln!("err_sum: {}", self.err_sum);
+        eprintln!("err_dt: {err_dt}");
+        // Calculate output
+        let output = (err * self.kp) + (self.err_sum * self.ki) + (err_dt * self.kd);
+        // Clamp output within desired range
+        self.clamp_output(output)
+    }
+
+    fn clamp_output(&self, val: f64) -> f64 {
+        val.max(self.min).min(self.max)
+    }
+
+    fn normalize_error(&self, error: f64) -> f64 {
+        let err_bound: f64 = (self.input_max - self.input_min) / 2.0;
+        let min_input: f64 = -err_bound;
+        let max_input: f64 = err_bound;
+        let mut input: f64 = error;
+        eprintln!("{input}");
+        let modulus: f64 = max_input - min_input;
+        eprintln!("{modulus}");
+        let num_max: u32 = ((input - min_input) / modulus) as u32;
+        eprintln!("{num_max}");
+        input = input - (num_max as f64 * modulus);
+        eprintln!("{input}");
+        let num_min: u32 = ((input - max_input) / modulus) as u32;
+        eprintln!("{num_min}");
+        input = input - (num_min as f64 * modulus);
+        eprintln!("{input}");
+
+        input
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use proptest::prelude::*;
+
+    #[test]
+    fn test_norm_error_accuracy() {
+        let mut pid = PID::new(0.0, 0.0, 0.0);
+        pid.enable_continuous_input(-180.0, 180.0);
+        let tests = [(275.3, -84.7), (60.0, 60.0)];
+        let fp_error = 0.001;
+        for (t, a) in tests {
+            let nt = pid.normalize_error(t);
+            eprintln!("{nt}");
+            assert!((a - fp_error) <= nt);
+            assert!((a + fp_error) >= nt);
+        }
+    }
+
+    proptest! {
+        #![proptest_config(ProptestConfig {
+        cases: 100000, .. ProptestConfig::default()
+        })]
+        #[test]
+        fn test_norm_error_bounds(a in 360.0f64..1000000.0) {
+            let mut pid = PID::new(0.0, 0.0, 0.0);
+            pid.enable_continuous_input(-180.0, 180.0);
+            // NOTE: This prop test will verify that norm_error will always
+            // return a value between -180.0 and 180.0
+            let na = pid.normalize_error(a);
+            prop_assert!((-180.0 <= na) && (na <= 180.0));
+        }
+    }
+}
