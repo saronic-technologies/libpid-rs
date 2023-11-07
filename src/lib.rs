@@ -99,9 +99,9 @@ impl PID {
         self.err_prev = err;
 
         // Calculate output
-        let output = (err * self.kp) + (self.err_sum * self.ki) + (err_dt * self.kd);
+        let mut output = (err * self.kp) + (self.err_sum * self.ki) + (err_dt * self.kd);
         // Clamp output within desired range
-        self.clamp_output(output);
+        output = self.clamp_output(output);
 
         debug!("SP: {}, PV: {}, ERR: {}, ERR_SUM: {}, ERR_DT: {}, OUT: {}",
             self.sp,
