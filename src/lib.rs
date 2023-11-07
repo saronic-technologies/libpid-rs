@@ -58,6 +58,7 @@ impl PID {
         self.pv = 0.0;
         self.err_sum = 0.0;
         self.err_prev = 0.0;
+        self.timer = None;
     }
 
     pub fn set_gains(&mut self, kp: f64, ki: f64, kd: f64) {
