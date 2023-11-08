@@ -125,9 +125,9 @@ impl PID {
         let max_input: f64 = err_bound;
         let mut input: f64 = error;
         let modulus: f64 = max_input - min_input;
-        let num_max: u32 = ((input - min_input) / modulus) as u32;
+        let num_max: i32 = ((input - min_input) / modulus) as i32;
         input = input - (num_max as f64 * modulus);
-        let num_min: u32 = ((input - max_input) / modulus) as u32;
+        let num_min: i32 = ((input - max_input) / modulus) as i32;
         input = input - (num_min as f64 * modulus);
 
         input
@@ -157,13 +157,14 @@ mod tests {
         cases: 100000, .. ProptestConfig::default()
         })]
         #[test]
-        fn test_norm_error_bounds(a in 360.0f64..1000000.0) {
+        fn test_norm_error_bounds(a in -1000000.0f64..1000000.0) {
             let mut pid = PID::new(0.0, 0.0, 0.0);
             pid.enable_continuous_input(-180.0, 180.0);
             // NOTE: This prop test will verify that norm_error will always
             // return a value between -180.0 and 180.0
             let na = pid.normalize_error(a);
-            prop_assert!((-180.0 <= na) && (na <= 180.0));
+            prop_assert!((-180.0 <= na) && (na <= 180.0),
+                "Error not within bounds: {} => {}", a, na);
         }
     }
 }
