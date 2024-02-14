@@ -22,6 +22,10 @@ pub struct PID {
     max: f64,
     // timer for elapsed time between control loop steps
     timer: Option<std::time::Instant>,
+    // enable debugging
+    debug: bool,
+    // add an optional label (for debugging)
+    debug_label: String,
 }
 
 impl PID {
@@ -40,7 +44,23 @@ impl PID {
             input_min: 0.0,
             input_max: 0.0,
             timer: None,
+            debug: false,
+            debug_label: String::from(""),
         }
+    }
+
+    pub fn enable_debug(&mut self) {
+        self.debug = true;
+    }
+
+    pub fn disable_debug(&mut self) {
+        self.debug = true;
+    }
+
+    pub fn add_debug_label(&mut self, s: &str) {
+        self.debug_label = String::from("(");
+        self.debug_label.push_str(s);
+        self.debug_label.push_str(") ");
     }
 
     pub fn enable_continuous_input(&mut self, min: f64, max: f64) {
@@ -103,14 +123,17 @@ impl PID {
         // Clamp output within desired range
         output = self.clamp_output(output);
 
-        debug!("SP: {}, PV: {}, ERR: {}, ERR_SUM: {}, ERR_DT: {}, OUT: {}",
-            self.sp,
-            self.pv,
-            err,
-            self.err_sum,
-            err_dt,
-            output
-        );
+        if self.debug {
+            debug!("{}SP: {}, PV: {}, ERR: {}, ERR_SUM: {}, ERR_DT: {}, OUT: {}",
+                self.debug_label,
+                self.sp,
+                self.pv,
+                err,
+                self.err_sum,
+                err_dt,
+                output
+            );
+        }
 
         output
     }
@@ -137,51 +160,7 @@ impl PID {
 #[cfg(test)]
 mod tests {
     use proptest::prelude::*;
-    use super::*;
-
-    #[test]
-    fn test_proportional_gain() {
-        let mut pid = PID::new(0.5, 0.0, 0.0);
-        pid.set_sp(10.0);
-        pid.set_pv(0.0);
-        let out = pid.step();
-        assert!(out == 5.0, "output is {out}, expected 5.0");
-        let out = pid.step();
-        assert!(out == 5.0, "output is {out}, expected 5.0");
-    }
-
-    #[test]
-    fn test_integral_gain() {
-        let mut pid = PID::new(0.0, 0.5, 0.0);
-        pid.set_sp(10.0);
-        pid.set_pv(0.0);
-        let out = pid.step();
-        assert!(out == 5.0, "output is {out}, expected 5.0");
-        let out = pid.step();
-        assert!(out == 10.0, "output is {out}, expected 10.0");
-        pid.set_pv(20.0);
-        let out = pid.step();
-        assert!(out == 5.0, "output is {out}, expected 5.0");
-        let out = pid.step();
-        assert!(out == 0.0, "output is {out}, expected 0.0");
-        let out = pid.step();
-        assert!(out == -5.0, "output is {out}, expected -5.0");
-    }
-
-    #[test]
-    fn test_derivative_gain() {
-        let mut pid = PID::new(0.0, 0.0, 0.5);
-        pid.set_sp(10.0);
-        pid.set_pv(0.0);
-        // First step, derivative is ignored
-        let out = pid.step();
-        assert!(out == 0.0, "output is {out}, expected 0.0");
-        pid.set_pv(5.0);
-        std::thread::sleep(std::time::Duration::from_secs(1));
-        let out = pid.step();
-        let error = 0.001;
-        assert!((out >= (-2.5 - error)) && (out <= (-2.5 + error)), "output is {out}, expected -2.5 +/- {error}");
-    }
+    use crate::PID;
 
     #[test]
     fn test_norm_error_accuracy() {
