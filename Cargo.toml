@@ -1,6 +1,6 @@
 [package]
 name = "libpid"
-version = "0.2.3"
+version = "0.3.0"
 edition = "2021"
 license = "MPL-2.0"
 description = "A rust crate library that implements a PID controller."
@@ -12,5 +12,9 @@ readme = "README.md"
 
 [dependencies]
 log = "0.4.20"
+
+[dev-dependencies]
 proptest = "1.3.1"
+serial_test = "3.0.0"
+test-log = "0.2.14"
 
