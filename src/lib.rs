@@ -1,4 +1,4 @@
-use log::debug;
+use tracing::debug;
 
 pub struct PID {
     // PID Gains
