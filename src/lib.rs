@@ -22,8 +22,6 @@ pub struct PID {
     max: f64,
     // timer for elapsed time between control loop steps
     timer: Option<std::time::Instant>,
-    // enable debugging
-    debug: bool,
     // add an optional label (for debugging)
     debug_label: String,
 }
@@ -44,17 +42,8 @@ impl PID {
             input_min: 0.0,
             input_max: 0.0,
             timer: None,
-            debug: false,
             debug_label: String::from(""),
         }
-    }
-
-    pub fn enable_debug(&mut self) {
-        self.debug = true;
-    }
-
-    pub fn disable_debug(&mut self) {
-        self.debug = true;
     }
 
     pub fn add_debug_label(&mut self, s: &str) {
@@ -123,17 +112,15 @@ impl PID {
         // Clamp output within desired range
         output = self.clamp_output(output);
 
-        if self.debug {
-            debug!("{}SP: {}, PV: {}, ERR: {}, ERR_SUM: {}, ERR_DT: {}, OUT: {}",
-                self.debug_label,
-                self.sp,
-                self.pv,
-                err,
-                self.err_sum,
-                err_dt,
-                output
-            );
-        }
+        debug!("{}SP: {}, PV: {}, ERR: {}, ERR_SUM: {}, ERR_DT: {}, OUT: {}",
+               self.debug_label,
+               self.sp,
+               self.pv,
+               err,
+               self.err_sum,
+               err_dt,
+               output
+        );
 
         output
     }
