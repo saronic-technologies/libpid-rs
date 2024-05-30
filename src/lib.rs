@@ -89,7 +89,7 @@ impl PID {
         self.pv = pv;
     }
 
-    pub fn step(&mut self) -> f64 {
+    pub fn step(&mut self, dt_s: Option<f64>) -> f64 {
         // Calculate Error; normalize if input is continuous
         let mut err = self.sp - self.pv;
         if self.continuous_input {
@@ -99,9 +99,8 @@ impl PID {
         self.err_sum = self.err_sum + err;
         // Error rate of change for derivative portion
         let mut err_dt: f64 = 0.0;
-        // Ignore D value on first step (timer will be None)
-        if let Some(timer) = self.timer {
-            let dt = timer.elapsed().as_secs_f64();
+        // Ignore D value on first step (dt will be None)
+        if let Some(dt) = dt_s {
             err_dt = (err - self.err_prev) / dt;
         }
         self.timer = Some(std::time::Instant::now());
