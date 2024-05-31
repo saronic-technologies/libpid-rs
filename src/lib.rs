@@ -20,8 +20,6 @@ pub struct PID {
     // Output clamp
     min: f64,
     max: f64,
-    // timer for elapsed time between control loop steps
-    timer: Option<std::time::Instant>,
     // add an optional label (for debugging)
     debug_label: String,
 }
@@ -41,7 +39,6 @@ impl PID {
             continuous_input: false,
             input_min: 0.0,
             input_max: 0.0,
-            timer: None,
             debug_label: String::from(""),
         }
     }
@@ -67,7 +64,6 @@ impl PID {
         self.pv = 0.0;
         self.err_sum = 0.0;
         self.err_prev = 0.0;
-        self.timer = None;
     }
 
     pub fn set_gains(&mut self, kp: f64, ki: f64, kd: f64) {
@@ -89,22 +85,20 @@ impl PID {
         self.pv = pv;
     }
 
-    pub fn step(&mut self) -> f64 {
+    pub fn step(&mut self, dt: Option<f64>) -> f64 {
         // Calculate Error; normalize if input is continuous
         let mut err = self.sp - self.pv;
         if self.continuous_input {
             err = self.normalize_error(err);
         }
         // Error summation for integral portion
-        self.err_sum = self.err_sum + err;
+        self.err_sum += err;
         // Error rate of change for derivative portion
         let mut err_dt: f64 = 0.0;
-        // Ignore D value on first step (timer will be None)
-        if let Some(timer) = self.timer {
-            let dt = timer.elapsed().as_secs_f64();
+        // Ignore D value on first step (dt will be None)
+        if let Some(dt) = dt {
             err_dt = (err - self.err_prev) / dt;
         }
-        self.timer = Some(std::time::Instant::now());
         self.err_prev = err;
 
         // Calculate output
@@ -112,14 +106,9 @@ impl PID {
         // Clamp output within desired range
         output = self.clamp_output(output);
 
-        debug!("{}SP: {}, PV: {}, ERR: {}, ERR_SUM: {}, ERR_DT: {}, OUT: {}",
-               self.debug_label,
-               self.sp,
-               self.pv,
-               err,
-               self.err_sum,
-               err_dt,
-               output
+        debug!(
+            "{}SP: {}, PV: {}, ERR: {}, ERR_SUM: {}, ERR_DT: {}, OUT: {}",
+            self.debug_label, self.sp, self.pv, err, self.err_sum, err_dt, output
         );
 
         output
@@ -136,9 +125,9 @@ impl PID {
         let mut input: f64 = error;
         let modulus: f64 = max_input - min_input;
         let num_max: i32 = ((input - min_input) / modulus) as i32;
-        input = input - (num_max as f64 * modulus);
+        input -= num_max as f64 * modulus;
         let num_min: i32 = ((input - max_input) / modulus) as i32;
-        input = input - (num_min as f64 * modulus);
+        input -= num_min as f64 * modulus;
 
         input
     }
@@ -146,8 +135,8 @@ impl PID {
 
 #[cfg(test)]
 mod tests {
-    use proptest::prelude::*;
     use crate::PID;
+    use proptest::prelude::*;
 
     #[test]
     fn test_norm_error_accuracy() {
@@ -173,7 +162,7 @@ mod tests {
             // NOTE: This prop test will verify that norm_error will always
             // return a value between -180.0 and 180.0
             let na = pid.normalize_error(a);
-            prop_assert!((-180.0 <= na) && (na <= 180.0),
+            prop_assert!((-180.0..=180.0).contains(&na),
                 "Error not within bounds: {} => {}", a, na);
         }
     }
