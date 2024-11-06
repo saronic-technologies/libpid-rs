@@ -94,7 +94,7 @@ impl PID {
         let mut err_pv = self.pv - self.pv_prev;
         if self.continuous_input {
             err = self.normalize_error(err);
-            err_pv = self.normalize_error(err_pv);
+            // err_pv = self.normalize_error(err_pv);
         }
         let errf = 0.1 * err_pv + (1. - 0.1) * self.errf_prev;
         // Error summation for integral portion
