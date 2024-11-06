@@ -91,14 +91,12 @@ impl PID {
     pub fn step(&mut self, dt: Option<f64>) -> f64 {
         // Calculate Error; normalize if input is continuous
         let mut err = self.sp - self.pv;
-        let err_pv = self.pv - self.pv_prev;
+        let mut err_pv = self.pv - self.pv_prev;
         if self.continuous_input {
             err = self.normalize_error(err);
+            err_pv = self.normalize_error(err_pv);
         }
         let mut errf = 0.1 * err_pv + (1. - 0.1) * self.errf_prev;
-        if self.continuous_input {
-            errf = self.normalize_error(errf);
-        }
         // Error summation for integral portion
         self.err_sum += err;
         // Error rate of change for derivative portion
@@ -160,6 +158,20 @@ mod tests {
             assert!((a - fp_error) <= nt);
             assert!((a + fp_error) >= nt);
         }
+    }
+
+    #[test]
+    fn test_pv_sp_error() {
+        let mut pid = PID::new(0.0, 0.0, 0.0);
+        pid.enable_continuous_input(-180.0, 180.0);
+        pid.set_pv(177.0);
+        pid.set_sp(182.0);
+        pid.step(Some(1.0));
+        pid.step(Some(1.0));
+ 
+        pid.set_pv(181.0);
+        pid.step(Some(1.0));
+        pid.step(Some(1.0));
     }
 
     proptest! {
