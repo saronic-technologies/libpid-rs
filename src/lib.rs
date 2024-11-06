@@ -9,7 +9,7 @@ pub struct PID {
     sp: f64,
     // Process Variable
     pv: f64,
-    pv_prev: f64;
+    pv_prev: f64,
     // Continuous input range
     continuous_input: bool,
     input_min: f64,
@@ -91,7 +91,7 @@ impl PID {
     pub fn step(&mut self, dt: Option<f64>) -> f64 {
         // Calculate Error; normalize if input is continuous
         let mut err = self.sp - self.pv;
-        let mut err_pv = self.pv - self.pv_prev
+        let mut err_pv = self.pv - self.pv_prev;
         if self.continuous_input {
             err = self.normalize_error(err);
             err_pv = self.normalize_error(err_pv);
