@@ -96,7 +96,7 @@ impl PID {
             err = self.normalize_error(err);
             err_pv = self.normalize_error(err_pv);
         }
-        let mut errf = 0.1 * err_pv + (1. - 0.1) * self.errf_prev;
+        let errf = 0.1 * err_pv + (1. - 0.1) * self.errf_prev;
         // Error summation for integral portion
         self.err_sum += err;
         // Error rate of change for derivative portion
