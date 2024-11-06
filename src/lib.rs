@@ -91,10 +91,9 @@ impl PID {
     pub fn step(&mut self, dt: Option<f64>) -> f64 {
         // Calculate Error; normalize if input is continuous
         let mut err = self.sp - self.pv;
-        let mut err_pv = self.pv - self.pv_prev;
+        let err_pv = self.pv - self.pv_prev;
         if self.continuous_input {
             err = self.normalize_error(err);
-            err_pv = self.normalize_error(err_pv);
         }
         let mut errf = 0.1 * err_pv + (1. - 0.1) * self.errf_prev;
         if self.continuous_input {
@@ -114,6 +113,9 @@ impl PID {
         let mut output = (err * self.kp) + (self.err_sum * self.ki) - (errf_dt * self.kd);
         // Clamp output within desired range
         output = self.clamp_output(output);
+
+        eprintln!(            "{}SP: {}, PV: {}, ERR: {}, ERR_SUM: {}, ERR_DT: {}, OUT: {}",
+        self.debug_label, self.sp, self.pv, err, self.err_sum, errf_dt, output);
 
         debug!(
             "{}SP: {}, PV: {}, ERR: {}, ERR_SUM: {}, ERR_DT: {}, OUT: {}",
