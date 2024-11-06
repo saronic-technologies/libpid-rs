@@ -9,6 +9,7 @@ pub struct PID {
     sp: f64,
     // Process Variable
     pv: f64,
+    pv_prev: f64,
     // Continuous input range
     continuous_input: bool,
     input_min: f64,
@@ -32,6 +33,7 @@ impl PID {
             kd,
             sp: 0.0,
             pv: 0.0,
+            pv_prev: 0.0,
             err_sum: 0.0,
             err_prev: 0.0,
             min: f64::MIN,
@@ -62,6 +64,7 @@ impl PID {
     pub fn reset(&mut self) {
         self.sp = 0.0;
         self.pv = 0.0;
+        self.pv_prev = 0.0;
         self.err_sum = 0.0;
         self.err_prev = 0.0;
     }
@@ -95,14 +98,19 @@ impl PID {
         self.err_sum += err;
         // Error rate of change for derivative portion
         let mut err_dt: f64 = 0.0;
+        let mut pv_dt: f64 = 0.0;
         // Ignore D value on first step (dt will be None)
         if let Some(dt) = dt {
             err_dt = (err - self.err_prev) / dt;
         }
+        if let Some(dt) = dt {
+            pv_dt = (self.pv - self.pv_prev) / dt;
+        }
         self.err_prev = err;
+        self.pv_prev = self.pv;
 
         // Calculate output
-        let mut output = (err * self.kp) + (self.err_sum * self.ki) + (err_dt * self.kd);
+        let mut output = (err * self.kp) + (self.err_sum * self.ki) - (pv_dt * self.kd); // + (err_dt * self.kd);
         // Clamp output within desired range
         output = self.clamp_output(output);
 
