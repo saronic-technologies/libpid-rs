@@ -110,7 +110,7 @@ impl PID {
         self.pv_prev = self.pv;
 
         // Calculate output
-        let mut output = (err * self.kp) + (self.err_sum * self.ki) - (pv_dt * self.kd); // + (err_dt * self.kd);
+        let mut output = (err * self.kp) + (self.err_sum * self.ki) + (pv_dt * self.kd); // + (err_dt * self.kd);
         // Clamp output within desired range
         output = self.clamp_output(output);
 
