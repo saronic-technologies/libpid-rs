@@ -91,7 +91,7 @@ impl PID {
         if self.continuous_input {
             err = self.normalize_error(err);
         }
-        let mut errf = 0.1 * err + (1. - 0.1) * self.errf_prev;
+        let mut errf = 0.01 * err + (1. - 0.01) * self.errf_prev;
         if self.continuous_input {
             errf = self.normalize_error(errf);
         }
