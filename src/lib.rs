@@ -90,9 +90,10 @@ impl PID {
     pub fn step(&mut self, dt: Option<f64>) -> f64 {
         // Calculate Error; normalize if input is continuous
         let mut err = self.sp - self.pv;
-        let errf = 0.1 * err + (1. - 0.1) * self.errf_prev;
+        let mut errf = 0.1 * err + (1. - 0.1) * self.errf_prev;
         if self.continuous_input {
             err = self.normalize_error(err);
+            errf = self.normalize_error(errf);
         }
         // Error summation for integral portion
         self.err_sum += err;
