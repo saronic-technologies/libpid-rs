@@ -16,13 +16,8 @@ pub struct PID {
     // Integral Error
     err_sum: f64,
     // Previous Error
-    err: f64,
     err_prev: f64,
-    err_prev2: f64,
-    d0: f64,
-    d1: f64,
-    fd0: f64,
-    fd1: f64,
+    errf_prev: f64,
     // Output clamp
     min: f64,
     max: f64,
@@ -39,13 +34,8 @@ impl PID {
             sp: 0.0,
             pv: 0.0,
             err_sum: 0.0,
-            err: 0.0,
             err_prev: 0.0,
-            err_prev2: 0.0,
-            d0: 0.0,
-            d1: 0.0,
-            fd0: 0.0,
-            fd1: 0.0,
+            errf_prev: 0.0,
             min: f64::MIN,
             max: f64::MAX,
             continuous_input: false,
@@ -75,13 +65,7 @@ impl PID {
         self.sp = 0.0;
         self.pv = 0.0;
         self.err_sum = 0.0;
-        self.err = 0.0;
         self.err_prev = 0.0;
-        self.err_prev2 = 0.0;
-        self.d0 = 0.0;
-        self.d1 = 0.0;
-        self.fd0 = 0.0;
-        self.fd1 = 0.0;
     }
 
     pub fn set_gains(&mut self, kp: f64, ki: f64, kd: f64) {
@@ -104,65 +88,33 @@ impl PID {
     }
 
     pub fn step(&mut self, dt: Option<f64>) -> f64 {
-        if let Some(dt) = dt {
-            let a0 = self.kp + self.ki * dt;
-            let a1 = -self.kp;
-    
-            let a0d = self.kd / dt;
-            let a1d = -2.0 * self.kd / dt;
-            let a2d = self.kd / dt;
-    
-            let n = 5.0;
-            let tau = self.kd / (self.kp * n);
-            let alpha = dt / (2.0 * tau);
-    
-            self.err_prev2 = self.err_prev;
-            self.err_prev = self.err;
-            self.err = self.sp - self.pv;
-            // PI
-            let kpi_term = a0 * self.err + a1 * self.err_prev;
-            // Filtered D
-            self.d1 = self.d0;
-            self.d0 = a0d * self.err + a1d * self.err_prev + a2d * self.err_prev2;
-            self.fd1 = self.fd0;
-            self.fd0 = ((alpha) / (alpha + 1.)) * (self.d0 + self.d1) - ((alpha - 1.) / (alpha + 1.)) * self.fd1;
-    
-            let mut output = kpi_term + self.fd0;
-            // Clamp output within desired range
-            output = self.clamp_output(output);
-    
-            output
-        } else {
-            0.0
+        // Calculate Error; normalize if input is continuous
+        let mut err = self.sp - self.pv;
+        let errf = 0.1 * err + (1. - 0.1) * self.errf_prev;
+        if self.continuous_input {
+            err = self.normalize_error(err);
         }
+        // Error summation for integral portion
+        self.err_sum += err;
+        // Error rate of change for derivative portion
+        let mut errf_dt: f64 = 0.0;
+        // Ignore D value on first step (dt will be None)
+        if let Some(dt) = dt {
+            errf_dt = (errf - self.errf_prev) / dt;
+        }
+        self.errf_prev = errf;
 
-        // // Calculate Error; normalize if input is continuous
-        // let mut err = self.sp - self.pv;
-        // if self.continuous_input {
-        //     err = self.normalize_error(err);
-        // }
-        // // Error summation for integral portion
-        // self.err_sum += err;
-        // // Error rate of change for derivative portion
-        // let mut err_dt: f64 = 0.0;
-        // let mut pv_dt: f64 = 0.0;
-        // // Ignore D value on first step (dt will be None)
-        // if let Some(dt) = dt {
-        //     err_dt = (err - self.err_prev) / dt;
-        // }
-        // self.err_prev = err;
+        // Calculate output
+        let mut output = (err * self.kp) + (self.err_sum * self.ki) + (errf_dt * self.kd);
+        // Clamp output within desired range
+        output = self.clamp_output(output);
 
-        // // Calculate output
-        // let mut output = (err * self.kp) + (self.err_sum * self.ki) + (err_dt * self.kd);
-        // // Clamp output within desired range
-        // output = self.clamp_output(output);
+        debug!(
+            "{}SP: {}, PV: {}, ERR: {}, ERR_SUM: {}, ERR_DT: {}, OUT: {}",
+            self.debug_label, self.sp, self.pv, err, self.err_sum, errf_dt, output
+        );
 
-        // debug!(
-        //     "{}SP: {}, PV: {}, ERR: {}, ERR_SUM: {}, ERR_DT: {}, OUT: {}",
-        //     self.debug_label, self.sp, self.pv, err, self.err_sum, err_dt, output
-        // );
-
-        // output
+        output
     }
 
     fn clamp_output(&self, val: f64) -> f64 {
