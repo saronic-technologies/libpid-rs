@@ -16,7 +16,6 @@ pub struct PID {
     // Integral Error
     err_sum: f64,
     // Previous Error
-    err_prev: f64,
     errf_prev: f64,
     // Output clamp
     min: f64,
@@ -34,7 +33,6 @@ impl PID {
             sp: 0.0,
             pv: 0.0,
             err_sum: 0.0,
-            err_prev: 0.0,
             errf_prev: 0.0,
             min: f64::MIN,
             max: f64::MAX,
@@ -65,7 +63,7 @@ impl PID {
         self.sp = 0.0;
         self.pv = 0.0;
         self.err_sum = 0.0;
-        self.err_prev = 0.0;
+        self.errf_prev = 0.0;
     }
 
     pub fn set_gains(&mut self, kp: f64, ki: f64, kd: f64) {
@@ -90,9 +88,11 @@ impl PID {
     pub fn step(&mut self, dt: Option<f64>) -> f64 {
         // Calculate Error; normalize if input is continuous
         let mut err = self.sp - self.pv;
-        let mut errf = 0.1 * err + (1. - 0.1) * self.errf_prev;
         if self.continuous_input {
             err = self.normalize_error(err);
+        }
+        let mut errf = 0.1 * err + (1. - 0.1) * self.errf_prev;
+        if self.continuous_input {
             errf = self.normalize_error(errf);
         }
         // Error summation for integral portion
