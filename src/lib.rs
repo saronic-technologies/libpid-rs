@@ -9,6 +9,7 @@ pub struct PID {
     sp: f64,
     // Process Variable
     pv: f64,
+    pv_prev: f64;
     // Continuous input range
     continuous_input: bool,
     input_min: f64,
@@ -32,6 +33,7 @@ impl PID {
             kd,
             sp: 0.0,
             pv: 0.0,
+            pv_prev: 0.0,
             err_sum: 0.0,
             errf_prev: 0.0,
             min: f64::MIN,
@@ -62,6 +64,7 @@ impl PID {
     pub fn reset(&mut self) {
         self.sp = 0.0;
         self.pv = 0.0;
+        self.pv_prev = 0.0;
         self.err_sum = 0.0;
         self.errf_prev = 0.0;
     }
@@ -88,10 +91,12 @@ impl PID {
     pub fn step(&mut self, dt: Option<f64>) -> f64 {
         // Calculate Error; normalize if input is continuous
         let mut err = self.sp - self.pv;
+        let mut err_pv = self.pv - self.pv_prev
         if self.continuous_input {
             err = self.normalize_error(err);
+            err_pv = self.normalize_error(err_pv);
         }
-        let mut errf = 0.05 * err + (1. - 0.05) * self.errf_prev;
+        let mut errf = 0.1 * err_pv + (1. - 0.1) * self.errf_prev;
         if self.continuous_input {
             errf = self.normalize_error(errf);
         }
@@ -106,7 +111,7 @@ impl PID {
         self.errf_prev = errf;
 
         // Calculate output
-        let mut output = (err * self.kp) + (self.err_sum * self.ki) + (errf_dt * self.kd);
+        let mut output = (err * self.kp) + (self.err_sum * self.ki) - (errf_dt * self.kd);
         // Clamp output within desired range
         output = self.clamp_output(output);
 
