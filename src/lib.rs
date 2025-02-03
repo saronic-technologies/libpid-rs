@@ -16,8 +16,6 @@ pub struct PID {
     input_max: f64,
     // Integral Error
     err_sum: f64,
-    // Previous Error
-    err_prev: f64,
     // Output clamp
     min: f64,
     max: f64,
@@ -34,7 +32,6 @@ impl PID {
             sp: 0.0,
             pv: 0.0,
             err_sum: 0.0,
-            err_prev: 0.0,
             min: f64::MIN,
             max: f64::MAX,
             continuous_input: false,
@@ -65,7 +62,6 @@ impl PID {
         self.pv = 0.0;
         self.pv_prev = 0.0;
         self.err_sum = 0.0;
-        self.err_prev = 0.0;
     }
 
     pub fn set_gains(&mut self, kp: f64, ki: f64, kd: f64) {
@@ -84,7 +80,6 @@ impl PID {
     }
 
     pub fn set_pv(&mut self, pv: f64) {
-        self.pv_prev = self.pv;
         self.pv = pv;
     }
 
@@ -97,12 +92,16 @@ impl PID {
         // Error summation for integral portion
         self.err_sum += err;
         // Error rate of change for derivative portion
-        let mut err_dt: f64 = 0.0;
         // Ignore D value on first step (dt will be None)
-        if let Some(dt) = dt {
-            err_dt = (self.pv - self.pv_prev) / dt;
-        }
-        self.err_prev = err;
+       let err_dt: f64 = if let Some(dt) = dt {
+            // first re-calculate the previous error based on the current sp
+            recalc_prev_err = self.sp - self.pv_prev;
+            // then calculate err_dt
+            (err - recalc_prev_err) / dt
+        } else {
+            0.0
+        };
+        self.pv_prev = self.pv;
 
         // Calculate output
         let mut output = (err * self.kp) + (self.err_sum * self.ki) + (err_dt * self.kd);
