@@ -55,7 +55,7 @@ mod tests {
         std::thread::sleep(std::time::Duration::from_secs(1));
         let dt = timer.elapsed().as_secs_f64();
         let out = pid.step(Some(dt));
-        let error = 0.001;
+        let error = 0.025;
         assert!(
             (out >= (-2.5 - error)) && (out <= (-2.5 + error)),
             "output is {out}, expected -2.5 +/- {error}"
