@@ -9,6 +9,7 @@ pub struct PID {
     sp: f64,
     // Process Variable
     pv: f64,
+    pv_prev: f64,
     // Continuous input range
     continuous_input: bool,
     input_min: f64,
@@ -62,6 +63,7 @@ impl PID {
     pub fn reset(&mut self) {
         self.sp = 0.0;
         self.pv = 0.0;
+        self.pv_prev = 0.0;
         self.err_sum = 0.0;
         self.err_prev = 0.0;
     }
@@ -82,6 +84,7 @@ impl PID {
     }
 
     pub fn set_pv(&mut self, pv: f64) {
+        self.pv_prev = self.pv;
         self.pv = pv;
     }
 
@@ -97,7 +100,7 @@ impl PID {
         let mut err_dt: f64 = 0.0;
         // Ignore D value on first step (dt will be None)
         if let Some(dt) = dt {
-            err_dt = (err - self.err_prev) / dt;
+            err_dt = (self.pv - self.pv_prev) / dt;
         }
         self.err_prev = err;
 
