@@ -31,6 +31,7 @@ impl PID {
             kd,
             sp: 0.0,
             pv: 0.0,
+            pv_prev: 0.0,
             err_sum: 0.0,
             min: f64::MIN,
             max: f64::MAX,
@@ -95,7 +96,11 @@ impl PID {
         // Ignore D value on first step (dt will be None)
        let err_dt: f64 = if let Some(dt) = dt {
             // first re-calculate the previous error based on the current sp
-            recalc_prev_err = self.sp - self.pv_prev;
+            let recalc_prev_err = if self.continuous_input {
+                self.normalize_error(self.sp - self.pv_prev)
+            } else {
+                self.sp - self.pv_prev
+            };
             // then calculate err_dt
             (err - recalc_prev_err) / dt
         } else {
