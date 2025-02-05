@@ -9,11 +9,9 @@ mod tests {
         let mut pid = PID::new(0.5, 0.0, 0.0);
         pid.set_sp(10.0);
         pid.set_pv(0.0);
-        let timer = std::time::Instant::now();
-        let mut dt = timer.elapsed().as_secs_f64();
+        let dt = 1.0;
         let out = pid.step(Some(dt));
         assert!(out == 5.0, "output is {out}, expected 5.0");
-        dt = timer.elapsed().as_secs_f64();
         let out = pid.step(Some(dt));
         assert!(out == 5.0, "output is {out}, expected 5.0");
     }
@@ -23,21 +21,16 @@ mod tests {
         let mut pid = PID::new(0.0, 0.5, 0.0);
         pid.set_sp(10.0);
         pid.set_pv(0.0);
-        let timer = std::time::Instant::now();
-        let mut dt = timer.elapsed().as_secs_f64();
+        let dt = 1.0;
         let out = pid.step(Some(dt));
         assert!(out == 5.0, "output is {out}, expected 5.0");
-        dt = timer.elapsed().as_secs_f64();
         let out = pid.step(Some(dt));
         assert!(out == 10.0, "output is {out}, expected 10.0");
         pid.set_pv(20.0);
-        dt = timer.elapsed().as_secs_f64();
         let out = pid.step(Some(dt));
         assert!(out == 5.0, "output is {out}, expected 5.0");
-        dt = timer.elapsed().as_secs_f64();
         let out = pid.step(Some(dt));
         assert!(out == 0.0, "output is {out}, expected 0.0");
-        dt = timer.elapsed().as_secs_f64();
         let out = pid.step(Some(dt));
         assert!(out == -5.0, "output is {out}, expected -5.0");
     }
