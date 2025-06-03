@@ -1,10 +1,7 @@
 #![no_std]
-
-extern crate alloc;
-use alloc::string::String;
 use tracing::debug;
 
-pub struct PID {
+pub struct PID<'a> {
     // PID Gains
     kp: f64,
     ki: f64,
@@ -24,11 +21,11 @@ pub struct PID {
     min: f64,
     max: f64,
     // add an optional label (for debugging)
-    debug_label: String,
+    debug_label: &'a str,
 }
 
-impl PID {
-    pub fn new(kp: f64, ki: f64, kd: f64) -> PID {
+impl<'a> PID<'a> {
+    pub fn new(kp: f64, ki: f64, kd: f64) -> PID<'a> {
         PID {
             kp,
             ki,
@@ -42,14 +39,12 @@ impl PID {
             continuous_input: false,
             input_min: 0.0,
             input_max: 0.0,
-            debug_label: String::from(""),
+            debug_label: "",
         }
     }
 
-    pub fn add_debug_label(&mut self, s: &str) {
-        self.debug_label = String::from("(");
-        self.debug_label.push_str(s);
-        self.debug_label.push_str(") ");
+    pub fn add_debug_label(&mut self, s: &'a str) {
+        self.debug_label = s;
     }
 
     pub fn enable_continuous_input(&mut self, min: f64, max: f64) {
