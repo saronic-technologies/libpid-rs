@@ -70,4 +70,41 @@ mod tests {
             "output is {out3}, expected -5.0 +/- {error}"
         );
     }
+    
+
+#[cfg(test)]
+mod tests {
+    use crate::PID;
+    use proptest::prelude::*;
+
+    #[test]
+    fn test_norm_error_accuracy() {
+        let mut pid = PID::new(0.0, 0.0, 0.0);
+        pid.enable_continuous_input(-180.0, 180.0);
+        let tests = [(275.3, -84.7), (60.0, 60.0)];
+        let fp_error = 0.001;
+        for (t, a) in tests {
+            let nt = pid.normalize_error(t);
+            assert!((a - fp_error) <= nt);
+            assert!((a + fp_error) >= nt);
+        }
+    }
+
+    proptest! {
+        #![proptest_config(ProptestConfig {
+        cases: 100000, .. ProptestConfig::default()
+        })]
+        #[test]
+        fn test_norm_error_bounds(a in -1000000.0f64..1000000.0) {
+            let mut pid = PID::new(0.0, 0.0, 0.0);
+            pid.enable_continuous_input(-180.0, 180.0);
+            // NOTE: This prop test will verify that norm_error will always
+            // return a value between -180.0 and 180.0
+            let na = pid.normalize_error(a);
+            prop_assert!((-180.0..=180.0).contains(&na),
+                "Error not within bounds: {} => {}", a, na);
+        }
+    }
 }
+    }
+

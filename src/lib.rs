@@ -1,6 +1,7 @@
+#![no_std]
 use tracing::debug;
 
-pub struct PID {
+pub struct PID<'a> {
     // PID Gains
     kp: f64,
     ki: f64,
@@ -20,11 +21,11 @@ pub struct PID {
     min: f64,
     max: f64,
     // add an optional label (for debugging)
-    debug_label: String,
+    debug_label: &'a str,
 }
 
-impl PID {
-    pub fn new(kp: f64, ki: f64, kd: f64) -> PID {
+impl<'a> PID<'a> {
+    pub fn new(kp: f64, ki: f64, kd: f64) -> PID<'a> {
         PID {
             kp,
             ki,
@@ -38,14 +39,12 @@ impl PID {
             continuous_input: false,
             input_min: 0.0,
             input_max: 0.0,
-            debug_label: String::from(""),
+            debug_label: "",
         }
     }
 
-    pub fn add_debug_label(&mut self, s: &str) {
-        self.debug_label = String::from("(");
-        self.debug_label.push_str(s);
-        self.debug_label.push_str(") ");
+    pub fn add_debug_label(&mut self, s: &'a str) {
+        self.debug_label = s;
     }
 
     pub fn enable_continuous_input(&mut self, min: f64, max: f64) {
@@ -125,7 +124,7 @@ impl PID {
         val.max(self.min).min(self.max)
     }
 
-    fn normalize_error(&self, error: f64) -> f64 {
+    pub fn normalize_error(&self, error: f64) -> f64 {
         let err_bound: f64 = (self.input_max - self.input_min) / 2.0;
         let min_input: f64 = -err_bound;
         let max_input: f64 = err_bound;
@@ -137,40 +136,5 @@ impl PID {
         input -= num_min as f64 * modulus;
 
         input
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use crate::PID;
-    use proptest::prelude::*;
-
-    #[test]
-    fn test_norm_error_accuracy() {
-        let mut pid = PID::new(0.0, 0.0, 0.0);
-        pid.enable_continuous_input(-180.0, 180.0);
-        let tests = [(275.3, -84.7), (60.0, 60.0)];
-        let fp_error = 0.001;
-        for (t, a) in tests {
-            let nt = pid.normalize_error(t);
-            assert!((a - fp_error) <= nt);
-            assert!((a + fp_error) >= nt);
-        }
-    }
-
-    proptest! {
-        #![proptest_config(ProptestConfig {
-        cases: 100000, .. ProptestConfig::default()
-        })]
-        #[test]
-        fn test_norm_error_bounds(a in -1000000.0f64..1000000.0) {
-            let mut pid = PID::new(0.0, 0.0, 0.0);
-            pid.enable_continuous_input(-180.0, 180.0);
-            // NOTE: This prop test will verify that norm_error will always
-            // return a value between -180.0 and 180.0
-            let na = pid.normalize_error(a);
-            prop_assert!((-180.0..=180.0).contains(&na),
-                "Error not within bounds: {} => {}", a, na);
-        }
     }
 }
