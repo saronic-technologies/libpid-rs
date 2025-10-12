@@ -19,9 +19,7 @@
       {
         devShells.default = mkShell {
           nativeBuildInputs = [
-            can-utils
-            openssl
-            rust-bin.nightly.latest.default
+            rust-bin.stable.latest.default
           ];
         };
       }
